@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trusted Asset Management Data Pipeline — Architecture</title>
+<style>
+:root{
+  --bg:#f4f7fb;--panel:#fff;--ink:#17243a;--muted:#5f6f86;--line:#d9e2ee;
+  --navy:#17365d;--blue:#2f6fed;--teal:#07877d;--amber:#b96a12;--red:#bd4452;
+  --purple:#7054b8;--green:#25845b;--shadow:0 10px 28px rgba(29,51,84,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,Segoe UI,Arial,sans-serif}
+main{max-width:1600px;margin:auto;padding:30px 34px 42px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:22px}
+.eyebrow{color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+h1{font-size:clamp(27px,3vw,42px);line-height:1.08;margin:8px 0 10px;letter-spacing:-.035em}
+.subtitle{color:var(--muted);max-width:850px;margin:0}
+.tag{background:#e8efff;color:#2457bd;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+button{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 13px;border-radius:9px;font-weight:650;cursor:pointer}
+button:hover{border-color:var(--blue);color:var(--blue)}
+.diagram-shell{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:auto}
+.diagram{display:block;width:100%;min-width:1080px;height:auto}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.key{display:flex;align-items:center;gap:7px}.swatch{width:10px;height:10px;border-radius:3px}
+.details{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:17px 18px;box-shadow:0 4px 16px rgba(29,51,84,.04)}
+.card h2{font-size:14px;margin:0 0 8px}.card p{margin:0;color:var(--muted);font-size:13px}
+.card ul{padding-left:18px;margin:8px 0 0;color:var(--muted);font-size:13px}
+.card li{margin:4px 0}
+.note{margin-top:16px;padding:13px 16px;border-left:4px solid var(--amber);background:#fff8ed;border-radius:8px;color:#6e4a1c;font-size:13px}
+footer{margin-top:20px;color:#77869a;font-size:11px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+svg text{font-family:Inter,Segoe UI,Arial,sans-serif}
+.node{filter:drop-shadow(0 3px 5px rgba(25,45,75,.08))}
+@media(max-width:850px){main{padding:20px 14px}.details{grid-template-columns:1fr}header{display:block}.tag{display:inline-block;margin-top:14px}}
+@media print{body{background:#fff}main{max-width:none;padding:10mm}.toolbar{display:none}.diagram-shell,.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <div class="eyebrow">Reference architecture · Data engineering case study</div>
+    <h1>Trusted Asset Management<br>Data Pipeline</h1>
+    <p class="subtitle">A replay-safe, quality-controlled pipeline that turns daily asset-management files into trusted portfolio positions and traceable compliance exceptions.</p>
+  </div>
+  <div class="tag">Logical architecture · Technology-agnostic</div>
+</header>
+
+<div class="toolbar">
+  <button onclick="window.print()">Print / Save as PDF</button>
+  <button onclick="document.getElementById('diagram').scrollIntoView({behavior:'smooth',block:'center'})">View architecture</button>
+</div>
+
+<section class="diagram-shell" id="diagram" aria-label="Asset management data pipeline architecture diagram">
+<svg class="diagram" viewBox="0 0 1500 970" role="img" aria-labelledby="svgtitle svgdesc">
+<title id="svgtitle">Trusted Asset Management Data Pipeline Architecture</title>
+<desc id="svgdesc">Five source datasets flow through ingestion and a Bronze, Silver and Gold medallion pipeline. Validation failures go to quarantine. Gold outputs include portfolio positions and compliance exceptions. Security, observability, reconciliation and recovery controls span the pipeline.</desc>
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#71839b"/></marker>
+  <marker id="bluearrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#2f6fed"/></marker>
+  <marker id="redarrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#bd4452"/></marker>
+</defs>
+<!-- section backgrounds -->
+<rect x="25" y="35" width="245" height="590" rx="16" fill="#f8fafc" stroke="#d9e2ee"/>
+<rect x="292" y="35" width="190" height="590" rx="16" fill="#f8fafc" stroke="#d9e2ee"/>
+<rect x="505" y="35" width="220" height="590" rx="16" fill="#f1f6ff" stroke="#cbd9f5"/>
+<rect x="748" y="35" width="250" height="590" rx="16" fill="#effaf8" stroke="#c6e6e1"/>
+<rect x="1021" y="35" width="235" height="590" rx="16" fill="#f5f1ff" stroke="#d9cff4"/>
+<rect x="1279" y="35" width="195" height="590" rx="16" fill="#f8fafc" stroke="#d9e2ee"/>
+
+<!-- headers -->
+<g fill="#52647c" font-size="12" font-weight="800" letter-spacing="1.2">
+<text x="45" y="66">01 · DATA SOURCES</text><text x="312" y="66">02 · INGESTION</text>
+<text x="525" y="66">03 · BRONZE / RAW</text><text x="768" y="66">04 · SILVER / VALIDATED</text>
+<text x="1041" y="66">05 · GOLD / CURATED</text><text x="1299" y="66">06 · CONSUMPTION</text>
+</g>
+
+<!-- sources -->
+<g class="node">
+<rect x="48" y="92" width="199" height="70" rx="10" fill="#fff" stroke="#b9c8da"/>
+<rect x="48" y="92" width="6" height="70" rx="3" fill="#2f6fed"/>
+<text x="66" y="118" fill="#17243a" font-size="15" font-weight="700">Security Master</text><text x="66" y="140" fill="#65758b" font-size="11">IDs · ISIN · asset class · validity</text>
+<rect x="48" y="176" width="199" height="70" rx="10" fill="#fff" stroke="#b9c8da"/>
+<rect x="48" y="176" width="6" height="70" rx="3" fill="#2f6fed"/>
+<text x="66" y="202" fill="#17243a" font-size="15" font-weight="700">Transactions</text><text x="66" y="224" fill="#65758b" font-size="11">Trade · portfolio · security · quantity</text>
+<rect x="48" y="260" width="199" height="70" rx="10" fill="#fff" stroke="#b9c8da"/>
+<rect x="48" y="260" width="6" height="70" rx="3" fill="#2f6fed"/>
+<text x="66" y="286" fill="#17243a" font-size="15" font-weight="700">Positions</text><text x="66" y="308" fill="#65758b" font-size="11">Portfolio · security · quantity · book value</text>
+<rect x="48" y="344" width="199" height="70" rx="10" fill="#fff" stroke="#b9c8da"/>
+<rect x="48" y="344" width="6" height="70" rx="3" fill="#2f6fed"/>
+<text x="66" y="370" fill="#17243a" font-size="15" font-weight="700">Market Prices</text><text x="66" y="392" fill="#65758b" font-size="11">Price date · price · currency · source</text>
+<rect x="48" y="428" width="199" height="70" rx="10" fill="#fff" stroke="#b9c8da"/>
+<rect x="48" y="428" width="6" height="70" rx="3" fill="#2f6fed"/>
+<text x="66" y="454" fill="#17243a" font-size="15" font-weight="700">Restricted Securities</text><text x="66" y="476" fill="#65758b" font-size="11">Restriction · effective dates · status</text>
+<rect x="48" y="528" width="199" height="65" rx="10" fill="#eef4ff" stroke="#c5d5f4" stroke-dasharray="4 3"/>
+<text x="65" y="553" fill="#2457bd" font-size="12" font-weight="700">Synthetic daily files</text><text x="65" y="574" fill="#65758b" font-size="11">CSV / Parquet · controlled delivery</text>
+</g>
+
+<!-- ingestion -->
+<g class="node">
+<rect x="315" y="105" width="144" height="82" rx="11" fill="#fff" stroke="#aebed1"/>
+<text x="387" y="133" text-anchor="middle" fill="#17243a" font-size="14" font-weight="700">File landing</text>
+<text x="387" y="153" text-anchor="middle" fill="#65758b" font-size="11">Immutable delivery</text>
+<text x="387" y="169" text-anchor="middle" fill="#65758b" font-size="11">checksum · manifest</text>
+<rect x="315" y="220" width="144" height="94" rx="11" fill="#fff" stroke="#aebed1"/>
+<text x="387" y="248" text-anchor="middle" fill="#17243a" font-size="14" font-weight="700">Ingestion control</text>
+<text x="387" y="269" text-anchor="middle" fill="#65758b" font-size="11">Schema / file checks</text>
+<text x="387" y="286" text-anchor="middle" fill="#65758b" font-size="11">batch ID · run ID</text>
+<text x="387" y="301" text-anchor="middle" fill="#65758b" font-size="11">dedupe delivery</text>
+<rect x="315" y="348" width="144" height="92" rx="11" fill="#fff8ed" stroke="#e6c18d"/>
+<text x="387" y="376" text-anchor="middle" fill="#87500f" font-size="13" font-weight="700">Orchestration</text>
+<text x="387" y="397" text-anchor="middle" fill="#8a6b43" font-size="11">Dependency / retries</text>
+<text x="387" y="414" text-anchor="middle" fill="#8a6b43" font-size="11">checkpoint / replay</text>
+<rect x="315" y="477" width="144" height="93" rx="11" fill="#fff" stroke="#aebed1"/>
+<text x="387" y="505" text-anchor="middle" fill="#17243a" font-size="13" font-weight="700">Run registry</text>
+<text x="387" y="526" text-anchor="middle" fill="#65758b" font-size="11">File fingerprint</text>
+<text x="387" y="543" text-anchor="middle" fill="#65758b" font-size="11">business date · status</text>
+</g>
+
+<!-- bronze -->
+<g class="node">
+<rect x="528" y="103" width="174" height="118" rx="11" fill="#fff" stroke="#a8bee8"/>
+<text x="615" y="132" text-anchor="middle" fill="#214f9c" font-size="15" font-weight="700">Raw file store</text>
+<text x="615" y="155" text-anchor="middle" fill="#65758b" font-size="11">Original records preserved</text>
+<text x="615" y="173" text-anchor="middle" fill="#65758b" font-size="11">source file + checksum</text>
+<text x="615" y="191" text-anchor="middle" fill="#65758b" font-size="11">ingestion timestamp</text>
+<text x="615" y="207" text-anchor="middle" fill="#65758b" font-size="11">run_id · batch_id</text>
+<rect x="528" y="250" width="174" height="105" rx="11" fill="#fff" stroke="#a8bee8"/>
+<text x="615" y="280" text-anchor="middle" fill="#214f9c" font-size="14" font-weight="700">Bronze tables</text>
+<text x="615" y="303" text-anchor="middle" fill="#65758b" font-size="11">Append-only landing</text>
+<text x="615" y="321" text-anchor="middle" fill="#65758b" font-size="11">Source schema retained</text>
+<text x="615" y="339" text-anchor="middle" fill="#65758b" font-size="11">No business enrichment</text>
+<rect x="528" y="389" width="174" height="100" rx="11" fill="#fff" stroke="#a8bee8"/>
+<text x="615" y="418" text-anchor="middle" fill="#214f9c" font-size="13" font-weight="700">Technical validation</text>
+<text x="615" y="440" text-anchor="middle" fill="#65758b" font-size="11">Parse · required columns</text>
+<text x="615" y="458" text-anchor="middle" fill="#65758b" font-size="11">types · schema drift</text>
+<text x="615" y="476" text-anchor="middle" fill="#65758b" font-size="11">record identity</text>
+<rect x="528" y="520" width="174" height="70" rx="10" fill="#fff1f2" stroke="#e6b5bb"/>
+<text x="615" y="547" text-anchor="middle" fill="#a53342" font-size="13" font-weight="700">Quarantine</text>
+<text x="615" y="568" text-anchor="middle" fill="#8b5b62" font-size="11">Bad file / malformed rows</text>
+</g>
+
+<!-- silver -->
+<g class="node">
+<rect x="771" y="103" width="204" height="112" rx="11" fill="#fff" stroke="#9dd3cb"/>
+<text x="873" y="132" text-anchor="middle" fill="#08776e" font-size="15" font-weight="700">Business validation</text>
+<text x="873" y="155" text-anchor="middle" fill="#65758b" font-size="11">Required keys · uniqueness</text>
+<text x="873" y="173" text-anchor="middle" fill="#65758b" font-size="11">known security · valid dates</text>
+<text x="873" y="191" text-anchor="middle" fill="#65758b" font-size="11">positive / valid prices · freshness</text>
+<rect x="771" y="243" width="204" height="112" rx="11" fill="#fff" stroke="#9dd3cb"/>
+<text x="873" y="272" text-anchor="middle" fill="#08776e" font-size="15" font-weight="700">Silver conformed data</text>
+<text x="873" y="295" text-anchor="middle" fill="#65758b" font-size="11">Standardized types / currencies</text>
+<text x="873" y="313" text-anchor="middle" fill="#65758b" font-size="11">effective-dated security joins</text>
+<text x="873" y="331" text-anchor="middle" fill="#65758b" font-size="11">deduplicated business records</text>
+<text x="873" y="347" text-anchor="middle" fill="#65758b" font-size="10">accepted rows only</text>
+<rect x="771" y="386" width="204" height="104" rx="11" fill="#fff" stroke="#9dd3cb"/>
+<text x="873" y="414" text-anchor="middle" fill="#08776e" font-size="14" font-weight="700">Temporal enrichment</text>
+<text x="873" y="437" text-anchor="middle" fill="#65758b" font-size="11">Security Master as-of trade/date</text>
+<text x="873" y="455" text-anchor="middle" fill="#65758b" font-size="11">Price as-of position date</text>
+<text x="873" y="473" text-anchor="middle" fill="#65758b" font-size="11">Restriction active-window join</text>
+<rect x="771" y="520" width="204" height="70" rx="10" fill="#fff1f2" stroke="#e6b5bb"/>
+<text x="873" y="547" text-anchor="middle" fill="#a53342" font-size="13" font-weight="700">Rejected / quarantined rows</text>
+<text x="873" y="568" text-anchor="middle" fill="#8b5b62" font-size="11">reason_code · source lineage</text>
+</g>
+
+<!-- gold -->
+<g class="node">
+<rect x="1044" y="105" width="189" height="125" rx="11" fill="#fff" stroke="#c5b6eb"/>
+<text x="1138" y="134" text-anchor="middle" fill="#6547a8" font-size="15" font-weight="700">Portfolio positions</text>
+<text x="1138" y="157" text-anchor="middle" fill="#65758b" font-size="11">Portfolio + security + date</text>
+<text x="1138" y="175" text-anchor="middle" fill="#65758b" font-size="11">quantity · selected price</text>
+<text x="1138" y="193" text-anchor="middle" fill="#65758b" font-size="11">market value · currency</text>
+<text x="1138" y="211" text-anchor="middle" fill="#65758b" font-size="11">lineage · quality status</text>
+<rect x="1044" y="258" width="189" height="125" rx="11" fill="#fff" stroke="#c5b6eb"/>
+<text x="1138" y="287" text-anchor="middle" fill="#6547a8" font-size="15" font-weight="700">Compliance exceptions</text>
+<text x="1138" y="310" text-anchor="middle" fill="#65758b" font-size="11">Trade during active restriction</text>
+<text x="1138" y="328" text-anchor="middle" fill="#65758b" font-size="11">security · transaction · portfolio</text>
+<text x="1138" y="346" text-anchor="middle" fill="#65758b" font-size="11">restriction type / validity window</text>
+<text x="1138" y="364" text-anchor="middle" fill="#65758b" font-size="11">traceable evidence</text>
+<rect x="1044" y="411" width="189" height="105" rx="11" fill="#fff" stroke="#c5b6eb"/>
+<text x="1138" y="440" text-anchor="middle" fill="#6547a8" font-size="14" font-weight="700">Run reconciliation</text>
+<text x="1138" y="463" text-anchor="middle" fill="#65758b" font-size="11">received / accepted / rejected</text>
+<text x="1138" y="481" text-anchor="middle" fill="#65758b" font-size="11">duplicates · exceptions · totals</text>
+<text x="1138" y="499" text-anchor="middle" fill="#65758b" font-size="11">publish gate / run status</text>
+<rect x="1044" y="544" width="189" height="50" rx="9" fill="#f2edff" stroke="#c5b6eb"/>
+<text x="1138" y="574" text-anchor="middle" fill="#6547a8" font-size="12" font-weight="700">Atomic publication gate</text>
+</g>
+
+<!-- consumption -->
+<g class="node">
+<rect x="1301" y="118" width="151" height="82" rx="11" fill="#fff" stroke="#b9c8da"/>
+<text x="1376" y="148" text-anchor="middle" fill="#17243a" font-size="14" font-weight="700">Portfolio / NAV</text>
+<text x="1376" y="169" text-anchor="middle" fill="#65758b" font-size="11">Valuation & reporting</text>
+<rect x="1301" y="230" width="151" height="82" rx="11" fill="#fff" stroke="#b9c8da"/>
+<text x="1376" y="260" text-anchor="middle" fill="#17243a" font-size="14" font-weight="700">Operations</text>
+<text x="1376" y="281" text-anchor="middle" fill="#65758b" font-size="11">Position processing</text>
+<rect x="1301" y="342" width="151" height="82" rx="11" fill="#fff" stroke="#b9c8da"/>
+<text x="1376" y="372" text-anchor="middle" fill="#17243a" font-size="14" font-weight="700">Risk & Compliance</text>
+<text x="1376" y="393" text-anchor="middle" fill="#65758b" font-size="11">Exceptions / controls</text>
+<rect x="1301" y="454" width="151" height="82" rx="11" fill="#fff" stroke="#b9c8da"/>
+<text x="1376" y="484" text-anchor="middle" fill="#17243a" font-size="14" font-weight="700">Data consumers</text>
+<text x="1376" y="505" text-anchor="middle" fill="#65758b" font-size="11">SQL / BI / extracts</text>
+</g>
+
+<!-- main flow arrows -->
+<g fill="none" stroke="#71839b" stroke-width="2.2" marker-end="url(#arrow)">
+<path d="M247 130 H280 V146 H315"/><path d="M247 211 H280 V146"/><path d="M247 295 H280 V146"/><path d="M247 379 H280 V146"/><path d="M247 463 H280 V146"/>
+<path d="M387 187 V220"/><path d="M459 266 H490 V160 H528"/>
+<path d="M615 221 V250"/><path d="M615 355 V389"/>
+<path d="M702 300 H738 V159 H771"/><path d="M873 215 V243"/><path d="M873 355 V386"/>
+<path d="M975 300 H1007 V167 H1044"/><path d="M975 435 H1007 V320 H1044"/>
+<path d="M1138 230 V258"/><path d="M1138 383 V411"/><path d="M1138 516 V544"/>
+<path d="M1233 167 H1264 V159 H1301"/><path d="M1233 320 H1270 V383 H1301"/><path d="M1233 167 H1270 V271 H1301"/><path d="M1233 167 H1270 V495 H1301"/>
+</g>
+<!-- exception routes -->
+<g fill="none" stroke="#bd4452" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#redarrow)">
+<path d="M615 489 V520"/><path d="M873 490 V520"/>
+</g>
+<g fill="#a53342" font-size="10" font-weight="700"><text x="625" y="509">technical rejects</text><text x="884" y="509">business rejects</text></g>
+
+<!-- cross-cutting control band -->
+<rect x="25" y="660" width="1449" height="265" rx="16" fill="#fff" stroke="#d9e2ee"/>
+<text x="48" y="692" fill="#52647c" font-size="12" font-weight="800" letter-spacing="1.2">CROSS-CUTTING ENGINEERING CONTROLS</text>
+<g class="node">
+<rect x="48" y="716" width="330" height="112" rx="12" fill="#eef4ff" stroke="#c5d5f4"/>
+<text x="70" y="746" fill="#2457bd" font-size="15" font-weight="700">Security & governance</text>
+<text x="70" y="771" fill="#536982" font-size="12">Least-privilege service identities · secrets manager</text>
+<text x="70" y="792" fill="#536982" font-size="12">Encrypted storage / transport · protected access</text>
+<text x="70" y="813" fill="#536982" font-size="12">Audit trail for reads, writes and publication</text>
+
+<rect x="397" y="716" width="330" height="112" rx="12" fill="#effaf8" stroke="#c6e6e1"/>
+<text x="419" y="746" fill="#08776e" font-size="15" font-weight="700">Observability & alerting</text>
+<text x="419" y="771" fill="#536982" font-size="12">Run health · freshness · duration · throughput</text>
+<text x="419" y="792" fill="#536982" font-size="12">Volumes · DQ pass / fail · rejected counts</text>
+<text x="419" y="813" fill="#536982" font-size="12">Structured logs · metrics · actionable alerts</text>
+
+<rect x="746" y="716" width="330" height="112" rx="12" fill="#fff8ed" stroke="#e6c18d"/>
+<text x="768" y="746" fill="#87500f" font-size="15" font-weight="700">Idempotency & recovery</text>
+<text x="768" y="771" fill="#536982" font-size="12">Stable business keys + file fingerprints</text>
+<text x="768" y="792" fill="#536982" font-size="12">Upsert / merge · checkpoints · bounded retries</text>
+<text x="768" y="813" fill="#536982" font-size="12">Replay safe; publish only complete validated runs</text>
+
+<rect x="1095" y="716" width="350" height="112" rx="12" fill="#f5f1ff" stroke="#d9cff4"/>
+<text x="1117" y="746" fill="#6547a8" font-size="15" font-weight="700">Lineage & reconciliation</text>
+<text x="1117" y="771" fill="#536982" font-size="12">source_file → run_id → record_id → output_id</text>
+<text x="1117" y="792" fill="#536982" font-size="12">Input / output counts and business control totals</text>
+<text x="1117" y="813" fill="#536982" font-size="12">Exception reason, rule version and timestamps</text>
+</g>
+<text x="48" y="876" fill="#65758b" font-size="12">Scale path: partition by business date / portfolio; parallelize independent files and transformations; move compute to distributed Spark when measured volume requires it.</text>
+<text x="48" y="898" fill="#65758b" font-size="12">Prototype can run locally (e.g., Python + SQL + DuckDB / PostgreSQL + Airflow or a simple orchestrator); components are logical, not mandated products.</text>
+</svg>
+<div class="legend">
+  <span class="key"><span class="swatch" style="background:#2f6fed"></span>Source & ingestion</span>
+  <span class="key"><span class="swatch" style="background:#2f6fed"></span>Bronze / raw</span>
+  <span class="key"><span class="swatch" style="background:#07877d"></span>Silver / validated</span>
+  <span class="key"><span class="swatch" style="background:#7054b8"></span>Gold / curated</span>
+  <span class="key"><span class="swatch" style="background:#bd4452"></span>Reject / quarantine path</span>
+  <span class="key">Solid arrows: data flow</span>
+</div>
+</section>
+
+<section class="details">
+  <article class="card">
+    <h2>Core business transformations</h2>
+    <ul>
+      <li>Build trusted positions from positions and/or transaction activity, using an explicitly documented position methodology.</li>
+      <li>Calculate market value from quantity × selected valid market price, with currency handling documented.</li>
+      <li>Join trades to restrictions using trade date within the restriction effective window and active status.</li>
+    </ul>
+  </article>
+  <article class="card">
+    <h2>Required demonstration scenarios</h2>
+    <ul>
+      <li>Same transaction file delivered twice → no double count.</li>
+      <li>Missing price → explicit warning, quarantine or reject; publication impact visible.</li>
+      <li>Restricted-security trade → traceable compliance exception.</li>
+      <li>Mid-run interruption → restart / replay without partial or duplicate publication.</li>
+      <li>Increasing synthetic volumes → measure throughput and identify bottleneck.</li>
+    </ul>
+  </article>
+  <article class="card">
+    <h2>Traceability contract</h2>
+    <p>Carry <strong>run_id</strong>, <strong>batch_id</strong>, <strong>source_file</strong>, <strong>source_record_id</strong>, ingestion timestamp, validation result and reason code through the layers. Use stable business keys and rule/version metadata so each curated row can be explained.</p>
+  </article>
+</section>
+
+<div class="note"><strong>Design assumptions to confirm in the implementation:</strong> the brief does not prescribe a technology stack, file format, position accounting method, base-currency conversion policy, or whether missing-price rows block an entire publication. Choose and document these decisions; the diagram shows logical responsibilities rather than asserting those unspecified policies.</div>
+
+<footer>
+  <span>Based on “Engineering a Trusted Asset Management Data Pipeline” candidate brief, pages 1–2.</span>
+  <span>Architecture reference · Synthetic data only</span>
+</footer>
+</main>
+</body>
+</html>
